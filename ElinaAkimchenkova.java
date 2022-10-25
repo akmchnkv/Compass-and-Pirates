@@ -1,8 +1,6 @@
-
 import java.io.*;
 import java.util.*;
 import static java.lang.Math.*;
-
 
 /*
   @author Elina Akimchenkova, BS21 -07, e.akimchenkova@innopolis.university
@@ -691,7 +689,7 @@ class AStar extends Algorithm {
      * solveProblem() - function that solve problem in two ways and chose one best:
      * in case of direct path, when kraken alive and actor have no tortuga and go directly to the DeadMansChest
      * in case of sum of two path (path to the tortuga, path from tortuga to DeadMansChest with killing Kraken)
-     *
+     * @param scenario - scenario
      * @param heroes - array of all objects on playing board
      */
     static void solveProblem(Heroes heroes, int scenario) {
@@ -744,6 +742,7 @@ class AStar extends Algorithm {
 
     /**
      * Class Constructor
+     * @param scenario - scenario
      */
     AStar(int scenario) {
         super(9, 9, scenario);
@@ -859,8 +858,8 @@ class BackTracking extends Algorithm {
      * solveProblem() - function that solve problem in two ways and chose one best:
      * in case of direct path, when kraken alive and actor have no tortuga and go directly to the DeadMansChest
      * in case of sum of two path (path to the tortuga, path from tortuga to DeadMansChest with killing Kraken)
-     *
      * @param heroes - array of all objects on playing board
+     * @param scenario - scenario
      */
     static void solveProblem(Heroes heroes, int scenario) {
         JackSparrow jackSparrow = heroes.getJackSparrow();
@@ -911,6 +910,7 @@ class BackTracking extends Algorithm {
 
     /**
      * Class constructor
+     * @param scenario - scenario
      */
     BackTracking(int scenario) {
         super(9, 9, scenario);
