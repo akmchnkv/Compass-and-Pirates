@@ -1,9 +1,6 @@
-package com.company;
 
 import java.io.*;
 import java.util.*;
-
-import static com.company.Const.INF;
 import static java.lang.Math.*;
 
 
@@ -11,6 +8,106 @@ import static java.lang.Math.*;
   @author Elina Akimchenkova, BS21 -07, e.akimchenkova@innopolis.university
   Introduction to Artificial Intelligence, Winter Semester 2022
  */
+
+/**
+ * Main class
+ */
+public class ElinaAkimchenkova {
+    /**
+     * Input reading, validation and program execution
+     *
+     * @param args command line arguments that are not used in this task
+     * @throws IOException file does not exist
+     */
+    public static void main(String[] args) throws IOException {
+
+        //Selection input from a file or generate randomly
+        Scanner input = new Scanner(System.in);
+        System.out.println("""
+                Chose one:
+                 1. To generate the map and manually insert perception scenario from console
+                 2. To insert the positions of agents and perception scenario from the input.txt""");
+        int num = input.nextInt();
+        //Input validation
+        while (!(num == 1 || num == 2)) {
+            System.out.println("Please, choose 1 or 2 variant!");
+            num = input.nextInt();
+        }
+        int scenario;
+        if (num == 1) {
+            //Scenario selection and validation
+            try {
+                scenario = input.nextInt();
+                if (scenario != 1 && scenario != 2) {
+                    throw new InputMismatchException();
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Incorrect scenario");
+                return;
+            }
+
+            Heroes board = new Heroes();
+            AStar.solveProblem(board, scenario);
+            BackTracking.solveProblem(board, scenario);
+        } else {
+            //Input from a file
+            BufferedReader reader;
+            try {
+                reader = new BufferedReader(new FileReader("input.txt"));
+            } catch (IOException e) {
+                System.out.println("input.txt does not exist!");
+                return;
+            }
+            String line = reader.readLine();
+            // Input validation through regular expression
+            boolean res = line.matches("^\\[[0],[0]]\\s(\\[\\d,\\d]\\s){4}\\[\\d,\\d]$");
+            if (!res) {
+                System.out.println("Incorrect input");
+                return;
+            }
+
+            //Scenario selection and validation
+            try {
+                scenario = Integer.parseInt(reader.readLine());
+                if (scenario != 1 && scenario != 2) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Incorrect scenario");
+                return;
+            }
+
+            //Checking input for number of lines
+            try {
+                reader.readLine();
+            } catch (Exception e) {
+                System.out.println("Incorrect input, should be two lines!");
+                return;
+            }
+
+            //Parsing of input
+            ArrayList<Algorithm.Pair> pairs = new ArrayList<>();
+            String[] splitLine = line.split(" ");
+            for (String s : splitLine) {
+                int parseInt1 = Integer.parseInt(String.valueOf(s.charAt(1)));
+                int parseInt2 = Integer.parseInt(String.valueOf(s.charAt(3)));
+                pairs.add(new Algorithm.Pair(parseInt1, parseInt2));
+            }
+            Heroes heroes = new Heroes(pairs);
+
+            /*
+              Checking restrictions on the coordinates
+              If everything is okay, solve problem, otherwise incorrect input
+             */
+            if (heroes.validityCoordinates(heroes)) {
+                AStar.solveProblem(heroes, scenario);
+                BackTracking.solveProblem(heroes, scenario);
+            } else {
+                System.out.println("Incorrect input");
+            }
+        }
+    }
+}
 
 /**
  * Interface for checking if hero in visible zone of Kraken, Davy Jones,
@@ -306,14 +403,12 @@ class State {
     }
 
     /**
-     * move() increase pathLength when Jack change position
+     * Return copy of state
      *
-     * @param x - new x - coordinate of Jack
-     * @param y - new y - coordinate of Jack
-     * @return new State
+     * @return state
      */
-    State move(int x, int y) {
-        return new State(x, y, haveTortuga, krakenAlive, pathLength + 1);
+    State copy() {
+        return new State(x, y, haveTortuga, krakenAlive, pathLength);
     }
 }
 
@@ -342,6 +437,10 @@ abstract class Algorithm {
      * Array of possible displacement
      */
     int[][] coord = {{-1, 0}, {-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}};
+    /**
+     * Array of possible displacement for scenario 2
+     */
+    int[][] coordScenario2 = {{-1, 0}, {-1, -1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-2, 0}, {2, 0}, {0, 2}, {0, -2}};
 
     /**
      * Contains path coordinates
@@ -354,18 +453,25 @@ abstract class Algorithm {
     int pathLength;
 
     /**
+     * Scenario of the game
+     */
+    int scenario;
+
+    /**
      * Class constructor. Initially, fill all minMap cells with large numbers
      *
-     * @param x x - coordinate
-     * @param y y - coordinate
+     * @param scenario - scenario of the game (first or second)
+     * @param x        x - coordinate
+     * @param y        y - coordinate
      */
-    Algorithm(int x, int y) {
+    Algorithm(int x, int y, int scenario) {
+        this.scenario = scenario;
         this.x = x;
         this.y = y;
         this.minMap = new int[x][y];
         for (int i = 0; i < x; i++) {
             for (int j = 0; j < y; j++) {
-                minMap[i][j] = INF;
+                minMap[i][j] = Const.INF;
             }
         }
     }
@@ -526,17 +632,18 @@ abstract class Algorithm {
                 output = new FileWriter("outputBacktracking.txt", false);
             }
 
-            if (tortugaPath.pathLength + finalPath.pathLength > INF) {
+            if (tortugaPath.pathLength + finalPath.pathLength > Const.INF) {
                 output.write("Lose\n");
+                output.close();
                 return;
             }
-
             output.write("Win\n");
             ArrayList<Algorithm.Pair> shortestPaths;
             if (dirPath.pathLength < tortugaPath.pathLength + finalPath.pathLength) {
                 output.write(String.valueOf(dirPath.pathLength));
                 output.write("\n");
                 shortestPaths = dirPath.path;
+
             } else {
                 output.write(String.valueOf(tortugaPath.pathLength + finalPath.pathLength));
                 output.write("\n");
@@ -587,23 +694,24 @@ class AStar extends Algorithm {
      *
      * @param heroes - array of all objects on playing board
      */
-    static void solveProblem(Heroes heroes) {
+    static void solveProblem(Heroes heroes, int scenario) {
         JackSparrow jackSparrow = heroes.getJackSparrow();
         Tortuga tortuga = heroes.getTortuga();
         DeadMansChest deadMansChest = heroes.getDeadMansChest();
 
         long beginTime = System.nanoTime();
         // direct
-        AStar dirPath = new AStar();
+        AStar dirPath = new AStar(scenario);
         dirPath.solve(jackSparrow.getX(), jackSparrow.getY(), deadMansChest.getX(), deadMansChest.getY(), heroes.getEnemies(), tortuga);
 
         // through Tortuga
-        AStar tortugaPath = new AStar();
+        AStar tortugaPath = new AStar(scenario);
         tortugaPath.solve(jackSparrow.getX(), jackSparrow.getY(), tortuga.getX(), tortuga.getY(), heroes.getEnemies(), tortuga);
-        AStar finalPath = new AStar();
+        AStar finalPath = new AStar(scenario);
         finalPath.solve(tortuga.getX(), tortuga.getY(), deadMansChest.getX(), deadMansChest.getY(), heroes.getEnemies(), tortuga);
         long ansTime = System.nanoTime() - beginTime;
         drawOutput(dirPath, tortugaPath, finalPath, ansTime);
+
     }
 
     /**
@@ -619,13 +727,17 @@ class AStar extends Algorithm {
     void solve(int xStart, int yStart, int xFinal, int yFinal, AbilityVisible[] enemies, Tortuga tortuga) {
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                minMap[i][j] = INF;
+                minMap[i][j] = Const.INF;
             }
         }
         State beginState = new State(xStart, yStart, false, true);
-        aStar(xStart, yStart, xFinal, yFinal, beginState, coord, enemies, tortuga);
+        if (scenario == 1) {
+            aStar(xStart, yStart, xFinal, yFinal, beginState, coord, enemies, tortuga);
+        } else {
+            aStar(xStart, yStart, xFinal, yFinal, beginState, coordScenario2, enemies, tortuga);
+        }
         pathLength = minMap[xFinal][yFinal];
-        if (minMap[xFinal][yFinal] != INF) {
+        if (minMap[xFinal][yFinal] != Const.INF) {
             path = getPaths(xStart, yStart, xFinal, yFinal, coord);
         }
     }
@@ -633,8 +745,8 @@ class AStar extends Algorithm {
     /**
      * Class Constructor
      */
-    AStar() {
-        super(9, 9);
+    AStar(int scenario) {
+        super(9, 9, scenario);
     }
 
     /**
@@ -669,6 +781,13 @@ class AStar extends Algorithm {
         Kraken kraken = (Kraken) enemies[1];
         minMap[xStart][yStart] = 0;
         queue.add(new QueueData(heuristic(state.x, state.y, xFinal, yFinal), state));
+        int step;
+        if (scenario == 2) {
+            step = coord.length - 4;
+        } else {
+            step = coord.length;
+        }
+
         while (!queue.isEmpty()) {
             QueueData newQueueData = queue.poll();
             int xCurrent = newQueueData.state.x;
@@ -678,8 +797,8 @@ class AStar extends Algorithm {
                 newQueueData.state.haveTortuga = true;
             }
             if (newQueueData.state.haveTortuga && newQueueData.state.krakenAlive) {
-                for (int[] i : coord) {
-                    if (xCurrent + i[0] == kraken.getX() && yCurrent + i[1] == kraken.getY()) {
+                for (int i = 0; i < step; i++) {
+                    if (xCurrent + coord[i][0] == kraken.getX() && yCurrent + coord[i][1] == kraken.getY()) {
                         newQueueData.state.krakenAlive = false;
                         break;
                     }
@@ -696,15 +815,35 @@ class AStar extends Algorithm {
                     continue;
                 }
                 boolean flag = true;
+                int inc = 0;
+                if (abs(ints[0]) == 2 || abs(ints[1]) == 2) {
+                    int xTemp = newQueueData.state.x + ints[0] / 2;
+                    int yTemp = newQueueData.state.y + ints[1] / 2;
+                    for (int k = 0; k < 3; k++) {
+                        if (enemies[k].visible(xTemp, yTemp) && !(enemies[1].visible(xTemp, yTemp) && !newQueueData.state.krakenAlive)) {
+                            flag = false;
+                            break;
+                        }
+                    }
+                    inc = 1;
+                }
+                if (!flag) {
+                    continue;
+                }
                 for (int k = 0; k < 3; k++) {
                     if (enemies[k].visible(xMoved, yMoved) && !(enemies[1].visible(xMoved, yMoved) && !newQueueData.state.krakenAlive)) {
                         flag = false;
                         break;
                     }
                 }
-                if (flag && minMap[xMoved][yMoved] > newQueueData.fromStart + 1) {
-                    minMap[xMoved][yMoved] = newQueueData.fromStart + 1;
-                    queue.add(new QueueData(heuristic(xMoved, yMoved, xFinal, yFinal), newQueueData.state.move(xMoved, yMoved)));
+
+                if (flag && minMap[xMoved][yMoved] > newQueueData.fromStart + 1 + inc) {
+                    minMap[xMoved][yMoved] = newQueueData.fromStart + 1 + inc;
+                    State stateMove = newQueueData.state.copy();
+                    stateMove.x = xMoved;
+                    stateMove.y = yMoved;
+                    stateMove.pathLength += inc + 1;
+                    queue.add(new QueueData(heuristic(xMoved, yMoved, xFinal, yFinal), stateMove));
                 }
             }
         }
@@ -723,20 +862,20 @@ class BackTracking extends Algorithm {
      *
      * @param heroes - array of all objects on playing board
      */
-    static void solveProblem(Heroes heroes) {
+    static void solveProblem(Heroes heroes, int scenario) {
         JackSparrow jackSparrow = heroes.getJackSparrow();
         Tortuga tortuga = heroes.getTortuga();
         DeadMansChest deadMansChest = heroes.getDeadMansChest();
 
         long beginTime = System.nanoTime();
         // direct
-        BackTracking dirPath = new BackTracking();
+        BackTracking dirPath = new BackTracking(scenario);
         dirPath.solve(jackSparrow.getX(), jackSparrow.getY(), deadMansChest.getX(), deadMansChest.getY(), heroes.getEnemies(), tortuga);
 
         // through Tortuga
-        BackTracking tortugaPath = new BackTracking();
+        BackTracking tortugaPath = new BackTracking(scenario);
         tortugaPath.solve(jackSparrow.getX(), jackSparrow.getY(), tortuga.getX(), tortuga.getY(), heroes.getEnemies(), tortuga);
-        BackTracking finalPath = new BackTracking();
+        BackTracking finalPath = new BackTracking(scenario);
         finalPath.solve(tortuga.getX(), tortuga.getY(), deadMansChest.getX(), deadMansChest.getY(), heroes.getEnemies(), tortuga);
         long ansTime = System.nanoTime() - beginTime;
         drawOutput(dirPath, tortugaPath, finalPath, ansTime);
@@ -755,13 +894,17 @@ class BackTracking extends Algorithm {
     void solve(int xStart, int yStart, int xFinal, int yFinal, AbilityVisible[] enemies, Tortuga tortuga) {
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                minMap[i][j] = INF;
+                minMap[i][j] = Const.INF;
             }
         }
         State beginState = new State(xStart, yStart, false, true);
-        backtrack(xStart, yStart, xFinal, yFinal, beginState, coord, enemies, tortuga);
+        if (scenario == 1) {
+            backtrack(xStart, yStart, xFinal, yFinal, beginState, coord, enemies, tortuga);
+        } else {
+            backtrack(xStart, yStart, xFinal, yFinal, beginState, coordScenario2, enemies, tortuga);
+        }
         pathLength = minMap[xFinal][yFinal];
-        if (minMap[xFinal][yFinal] != INF) {
+        if (minMap[xFinal][yFinal] != Const.INF) {
             path = getPaths(xStart, yStart, xFinal, yFinal, coord);
         }
     }
@@ -769,8 +912,8 @@ class BackTracking extends Algorithm {
     /**
      * Class constructor
      */
-    BackTracking() {
-        super(9, 9);
+    BackTracking(int scenario) {
+        super(9, 9, scenario);
     }
 
     /**
@@ -792,6 +935,13 @@ class BackTracking extends Algorithm {
             return;
         }
 
+        int step;
+        if (scenario == 2) {
+            step = coord.length - 4;
+        } else {
+            step = coord.length;
+        }
+
         if (tortuga.visible(xStart, yStart)) {
             state.haveTortuga = true;
         }
@@ -800,8 +950,8 @@ class BackTracking extends Algorithm {
         }
         if (state.haveTortuga && state.krakenAlive) {
             Kraken kraken = (Kraken) enemies[1];
-            for (int[] i : coord) {
-                if (xStart + i[0] == kraken.getX() && yStart + i[1] == kraken.getY()) {
+            for (int i = 0; i < step; i++) {
+                if (xStart + coord[i][0] == kraken.getX() && yStart + coord[i][1] == kraken.getY()) {
                     state.krakenAlive = false;
                     break;
                 }
@@ -815,6 +965,21 @@ class BackTracking extends Algorithm {
                 continue;
             }
             boolean flag = true;
+            int inc = 0;
+            if (abs(ints[0]) == 2 || abs(ints[1]) == 2) {
+                int xTemp = state.x + ints[0] / 2;
+                int yTemp = state.y + ints[1] / 2;
+                for (int k = 0; k < 3; k++) {
+                    if (enemies[k].visible(xTemp, yTemp) && !(enemies[1].visible(xTemp, yTemp) && !state.krakenAlive)) {
+                        flag = false;
+                        break;
+                    }
+                }
+                inc = 1;
+            }
+            if (!flag) {
+                continue;
+            }
             for (int k = 0; k < 3; k++) {
                 if (enemies[k].visible(xMoved, yMoved) && !(enemies[1].visible(xMoved, yMoved) && !state.krakenAlive)) {
                     flag = false;
@@ -822,7 +987,11 @@ class BackTracking extends Algorithm {
                 }
             }
             if (flag) {
-                backtrack(xMoved, yMoved, xFinal, yFinal, state.move(xMoved, yMoved), coord, enemies, tortuga);
+                State stateMove = state.copy();
+                stateMove.x = xMoved;
+                stateMove.y = yMoved;
+                stateMove.pathLength += inc + 1;
+                backtrack(xMoved, yMoved, xFinal, yFinal, stateMove, coord, enemies, tortuga);
             }
         }
     }
@@ -864,6 +1033,7 @@ class Heroes {
 
     /**
      * Class constructor
+     *
      * @param arr - ArrayList of pairs of coordinates of each object on playing board
      */
     Heroes(ArrayList<Algorithm.Pair> arr) {
@@ -884,6 +1054,7 @@ class Heroes {
 
     /**
      * getAllHeroes() getter for all heroes
+     *
      * @return array of positions of each hero
      */
     Character[] getAllHeroes() {
@@ -892,6 +1063,7 @@ class Heroes {
 
     /**
      * getEnemies() - function produces array of enemies
+     *
      * @return array of enemies
      */
     AbilityVisible[] getEnemies() {
@@ -900,6 +1072,7 @@ class Heroes {
 
     /**
      * getJackSparrow() getter for jackSparrow
+     *
      * @return jackSparrow
      */
     JackSparrow getJackSparrow() {
@@ -908,6 +1081,7 @@ class Heroes {
 
     /**
      * getTortuga() getter for tortuga
+     *
      * @return tortuga
      */
     Tortuga getTortuga() {
@@ -916,6 +1090,7 @@ class Heroes {
 
     /**
      * getDeadMansChest() getter for Dead Mans Chest
+     *
      * @return deadMansChest
      */
     DeadMansChest getDeadMansChest() {
@@ -924,6 +1099,7 @@ class Heroes {
 
     /**
      * getRandInt() - function that generates random integer number in range [0, 8]
+     *
      * @return random integer number
      */
     int getRandInt() {
@@ -973,6 +1149,7 @@ class Heroes {
 
     /**
      * validityCoordinates() checks validity of the coordinates entered
+     *
      * @param arr - array of all objects and their coordinates
      * @return True if coordinates are valid otherwise false
      */
@@ -1010,104 +1187,3 @@ class Heroes {
                 (!arr.kraken.visible(arr.tortuga.getX(), arr.tortuga.getY()));
     }
 }
-
-/**
- * Main class
- */
-public class Main {
-    /**
-     * Input reading, validation and program execution
-     *
-     * @param args command line arguments that are not used in this task
-     * @throws IOException file does not exist
-     */
-    public static void main(String[] args) throws IOException {
-        //Selection input from a file or generate randomly
-        Scanner input = new Scanner(System.in);
-        System.out.println("""
-                Chose one:
-                 1. To generate the map and manually insert perception scenario from console
-                 2. To insert the positions of agents and perception scenario from the input.txt""");
-        int num = input.nextInt();
-        //Input validation
-        while (!(num == 1 || num == 2)) {
-            System.out.println("Please, choose 1 or 2 variant!");
-            num = input.nextInt();
-        }
-        int scenario;
-        if (num == 1) {
-            //Scenario selection and validation
-            try {
-                scenario = input.nextInt();
-                if (scenario != 1 && scenario != 2) {
-                    throw new InputMismatchException();
-                }
-            } catch (InputMismatchException e) {
-                System.out.println("Incorrect scenario");
-                return;
-            }
-
-            Heroes board = new Heroes();
-            AStar.solveProblem(board);
-            BackTracking.solveProblem(board);
-        } else {
-            //Input from a file
-            BufferedReader reader;
-            try {
-                reader = new BufferedReader(new FileReader("input.txt"));
-            } catch (IOException e) {
-                System.out.println("input.txt does not exist!");
-                return;
-            }
-            String line = reader.readLine();
-            // Input validation through regular expression
-            boolean res = line.matches("^\\[[0],[0]]\\s(\\[\\d,\\d]\\s){4}\\[\\d,\\d]$");
-            if (!res) {
-                System.out.println("Incorrect input");
-                return;
-            }
-
-            //Scenario selection and validation
-            try {
-                scenario = Integer.parseInt(reader.readLine());
-                if (scenario != 1 && scenario != 2) {
-                    throw new NumberFormatException();
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Incorrect scenario");
-                return;
-            }
-
-            //Checking input for number of lines
-            try {
-                reader.readLine();
-            } catch (Exception e) {
-                System.out.println("Incorrect input, should be two lines!");
-                return;
-            }
-
-            //Parsing of input
-            ArrayList<Algorithm.Pair> pairs = new ArrayList<>();
-            String[] splitLine = line.split(" ");
-            for (String s : splitLine) {
-                int parseInt1 = Integer.parseInt(String.valueOf(s.charAt(1)));
-                int parseInt2 = Integer.parseInt(String.valueOf(s.charAt(3)));
-                pairs.add(new Algorithm.Pair(parseInt1, parseInt2));
-            }
-            Heroes heroes = new Heroes(pairs);
-
-            /*
-              Checking restrictions on the coordinates
-              If everything is okay, solve problem, otherwise incorrect input
-             */
-            if (heroes.validityCoordinates(heroes)) {
-                AStar.solveProblem(heroes);
-                BackTracking.solveProblem(heroes);
-            } else {
-                System.out.println("Incorrect input");
-            }
-        }
-    }
-}
-
-
