@@ -35,7 +35,7 @@ The assignment's description is unclear, and in order to complete it, you must r
 \subsection{Properties of the environment}
 \begin{enumerate}
     \item \textbf{Partially Observable -} Jack Sparrow can see only in his perception zone
-    \item \textbf{Single Agent -} On the map, only Jack Sparrow may move; all other objects are still
+    \item \textbf{Single Agent -} On the map, only Jack Sparrow may move; all other objects are stationary
     \item \textbf{Sequential -} Future actions are affected by the present choice, thus if Jack kills the Kraken, he can move in its location without suffering harm
     \item \textbf{Dynamic -} By slaying Kraken, Agent can alter the environment
     \item \textbf{Discrete -} Jack Sparrow moves from cell to cell in deliberate movements
@@ -106,7 +106,7 @@ Both algorithms can solve absolutely \textbf{ALL} maps, but there are a number o
 \end{tabular}
 \end{center}
 The table shows that in both cases, AStar solves the issue faster than Backtracking, although algorithms are the same while trying to discover a path (if one algorithm finds a path, the second will find it too). 
-It's also noteworthy that the second scenario runs the algorithm faster than the first one if you compare how quickly it operates in the various conditions.
+It's also noteworthy that the first scenario runs the algorithm faster than the second one if you compare how quickly it operates in the various conditions.
 \section{Source Code}
 Java source code files, together with report are available
 on my Github repository, the link: \href{https://github.com/akmchnkv/Compass-and-Pirates}.\\
