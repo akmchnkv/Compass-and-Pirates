@@ -1187,3 +1187,4 @@ class Heroes {
                 (!arr.kraken.visible(arr.tortuga.getX(), arr.tortuga.getY()));
     }
 }
+ 
